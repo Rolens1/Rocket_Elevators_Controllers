@@ -1,0 +1,61 @@
+// start the right scenario
+CALL start
+
+SEQUENCE start
+
+    
+
+ENDSEQUENCE
+
+SEQUENCE elevator_request
+    // get the user floor
+    // get the user direction
+    // get the closest elevator going in this direction
+ENDSEQUENCE
+
+
+
+// see wich elevator to use using the request calls
+SEQUENCE prioritize
+    // when calling a moving elevator wich one is to be prioritized
+    // if the elvator is going up... dont take the request down
+    // if the opposite... dont take the request of the higher floors
+    // on multiple calls sort by the direction of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
+ENDSEQUENCE
+
+// to check if the elevator is on service and safe to use + bring on back to ground floor
+SEQUENCE routine
+    // routinely check the elvator before USING
+    // when someone enters the elevator make sure the lights open
+    // when elevator is idle bring back to ground floor and check status
+ENDSEQUENCE
+
+// to control the opening and closing of the doors
+SEQUENCE open_door 
+    // if its on the right floor when called ... open the elevator door
+    // if it reached destination ... open door
+    
+    // start timer
+    // if button to open door is pressed ... open door
+    // if object is keeping elevator from closing ... open door
+    // if object is detected ... open door
+
+    // if timer reached more than 25 seconds ... start an alarm and request other elevators on calls instead
+    // else if timer is bigger than 15 secondes ... close door ... stop timer ... reset timer
+ENDSEQUENCE
+
+// temporal logic of the elevators
+SEQUENCE mesure_logic
+    // get the date and timer
+    // put the elevator the spots likely to be used depending of the time
+ENDSEQUENCE
+
+// inspect calls time
+SEQUENCE call_time 
+    // mesure the time each calls take and adapt it for each user to arrive in a timely manner
+ENDSEQUENCE
+
+// full elevator detection
+SEQUENCE full_capacity
+    // when full cap is reached .. bring up the elevators up while requesting another elevator
+ENDSEQUENCE
