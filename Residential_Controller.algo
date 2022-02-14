@@ -3,45 +3,128 @@ CALL start
 
 SEQUENCE start
 
+    // see user
+    SET user to new user // from user class
+
+    // create new elevators from elevators class
+    SET new_elevator_1 to new elevators // from the elevator class
+    SET new_elevator_2 to new elevators
+    SET new_elevator_3 to new elevators
+
+    // put elevators in spot users are likely to be
+    Call mesure_logic
+
+    // wait for user input
+    DISPLAY "up/down"
+    // get the user input
+    READ user.destination
+
+    // start the elevator request
+    Call elevator_request WITH user.destination AND user.pos
+
+    // when elevator reach the right floor, it will open the door
+    Call open_door
+
     
 
 ENDSEQUENCE
 
-SEQUENCE elevator_request
-    // get the user floor
+CLASS elevators
+    SET position to 0
+    SET movement to idle
+    SET available to TRUE
+ENDCLASS
+
+CLASS user USING position AND destination
+    SET pos to position
+    SET destination to destination
+ENDCLASS
+
+
+SEQUENCE elevator_request USING user.destination AND user.pos
+
+    // timed call for user
+    Call call_time
+
     // get the user direction
-    // get the closest elevator going in this direction
+    SET user_dir TO user.destination
+    // get user actual floor
+    SET user_pos TO user.pos
+
+    IF user_dir IS BIGGER THAN user_pos
+        RETURN user_dir is EQUAL TO down
+    ENDIF
+    IF user_dir IS SMALLER THAN user_pos
+        RETURN user_dir is EQUAL TO up
+    ENDIF
+
+    // look for the right elevator
+    Call available
+
 ENDSEQUENCE
 
+// get available elevators
+SEQUENCE available
 
+    // get usable elevator
+    Call routine
+
+
+    // get elevators position
+
+    // if moving up .. available for upper floors
+    // if moving down .. available for lower floors
+
+    // send the right elevator
+    Call prioritize
+    Call open_door
+
+ENDSEQUENCE
 
 // see wich elevator to use using the request calls
 SEQUENCE prioritize
     // when calling a moving elevator wich one is to be prioritized
-    // if the elvator is going up... dont take the request down
-    // if the opposite... dont take the request of the higher floors
-    // on multiple calls sort by the direction of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
+    // on multiple calls sort the requests of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
+    // the elevator is prioritize on movement first and second is the closest 
+    // send the right elevator
 ENDSEQUENCE
 
 // to check if the elevator is on service and safe to use + bring on back to ground floor
 SEQUENCE routine
-    // routinely check the elvator before USING
-    // when someone enters the elevator make sure the lights open
-    // when elevator is idle bring back to ground floor and check status
+
+    SET available_elevator TO a list
+
+    // routinely check the elevator before use
+    FOR EACH elevator FROM the elevators CLASS
+        IF elevator.available IS EQUAL TO TRUE
+            PUSH elevator.position TO available_elevator list
+        ENDIF
+        ELSE
+            PUSH null TO available_elevator list
+        ENDELSE
+    ENDFOR EACH
+
+    // when elevator is idle and not on a specific date and time bring back to ground floor and check status
+
+    RETURN available_elevator list
 ENDSEQUENCE
 
 // to control the opening and closing of the doors
 SEQUENCE open_door 
-    // if its on the right floor when called ... open the elevator door
-    // if it reached destination ... open door
+    // if its on the right floor ... open the elevator door
     
-    // start timer
+    // while door is open
+        // get the elevator weight
+        CALL full_capacity
+        // start timer
+
     // if button to open door is pressed ... open door
     // if object is keeping elevator from closing ... open door
     // if object is detected ... open door
 
     // if timer reached more than 25 seconds ... start an alarm and request other elevators on calls instead
     // else if timer is bigger than 15 secondes ... close door ... stop timer ... reset timer
+    // send elevator to next request or idle
 ENDSEQUENCE
 
 // temporal logic of the elevators
@@ -57,5 +140,12 @@ ENDSEQUENCE
 
 // full elevator detection
 SEQUENCE full_capacity
+    // get the total weight
     // when full cap is reached .. bring up the elevators up while requesting another elevator
+ENDSEQUENCE
+
+SEQUENCE user_destination
+    // get the user direction
+    // send the elevator to the right direction
+    // open the door
 ENDSEQUENCE
