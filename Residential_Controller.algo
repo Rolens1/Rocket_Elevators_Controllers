@@ -82,11 +82,54 @@ SEQUENCE available
 ENDSEQUENCE
 
 // see wich elevator to use using the request calls
-SEQUENCE prioritize USING available_elevator
+SEQUENCE prioritize USING available_elevator AND user_dir
     // when calling a moving elevator wich one is to be prioritized
+
+    SET elevator_diff TO 0
+    SET best_el TO a list []
+    SET old_el TO 0
+    // verify each elevator
     FOR EACH elems IN available_elevator
-        READ elems.pos AND elems.direction
+
+        SET new_el TO elems 
+        // get the new elevator to a new var to compare
+
+        // get the position and the movement status of the elevator
+        READ new_el.pos AND new_el.direction
+        // verify
+        IF new_el.direction IS NOT EQUAL TO user_dir OR new_el.movement IS NOT EQUAL TO "idle"
+            SET new_el.status to "busy"
+        ENDIF
+
+        ELSE
+            SET new_el.status to "available"
+
+            IF new_el.movement IS EQUAL TO "idle"
+                // find the difference of the elevator from the user
+                // keep the old position difference in a var
+                SET old_postion TO position_from_user
+                SET position_from_user TO COMPUTE user.pos - new_el.pos
+            ENDIF
+
+            IF user_dir IS EQUAL to "up" AND new_el.pos IS SMALLER THAN user_pos
+                SET old_postion TO position_from_user
+                SET position_from_user TO COMPUTE user_pos - new_el.pos
+            ENDIF
+
+            IF user_dir IS EQUAL to "down" AND new_el.pos IS BIGGER THAN user_pos
+                SET old_postion TO position_from_user
+                SET position_from_user TO COMPUTE new_el.pos - user_pos
+            ENDIF
+
+            IF old_postion < position_from_user
+                SET best_el IS EQUAL TO elems
+            ENDIF
+        ENDELSE
+
+        
     ENDFOR EACH
+    // now I have the best elevator for the user in (best_el)
+    
     // on multiple calls sort the requests of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
     // the elevator is prioritize on movement first and second is the closest 
     // send the right elevator
