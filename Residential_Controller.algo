@@ -31,7 +31,7 @@ ENDSEQUENCE
 
 CLASS elevators
     SET position to 0
-    SET movement to idle
+    SET direction to idle
     SET available to TRUE
 ENDCLASS
 
@@ -76,14 +76,17 @@ SEQUENCE available
     // if moving down .. available for lower floors
 
     // send the right elevator
-    Call prioritize
+    Call prioritize USING available_elevator
     Call open_door
 
 ENDSEQUENCE
 
 // see wich elevator to use using the request calls
-SEQUENCE prioritize
+SEQUENCE prioritize USING available_elevator
     // when calling a moving elevator wich one is to be prioritized
+    FOR EACH elems IN available_elevator
+        READ elems.pos AND elems.direction
+    ENDFOR EACH
     // on multiple calls sort the requests of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
     // the elevator is prioritize on movement first and second is the closest 
     // send the right elevator
