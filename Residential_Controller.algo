@@ -4,194 +4,120 @@ CALL start
 SEQUENCE start
 
     // see user
-    SET user to new user // from user class
+    SET user1 to new user // from user class
+    SET user1.position TO 3
+    SET user1.destination TO 7
 
     // create new elevators from elevators class
-    SET new_elevator_1 to new elevators // from the elevator class
-    SET new_elevator_2 to new elevators
-    SET new_elevator_3 to new elevators
+    SET elevator_A to new elevators // from the elevator class
+    SET elevator_A.position TO 2
 
+    SET elevator_B to new elevators
+    SET elevator_B.position TO 6
+
+    SET elevator_Array to elevator_A AND elevator_B
+
+ 
     // put elevators in spot users are likely to be
-    Call mesure_logic
+    Call mesure_logic USING elevator_Array // TODO
 
-    // wait for user input
-    DISPLAY "up/down"
-    // get the user input
-    READ user.destination
 
     // start the elevator request
-    Call elevator_request WITH user.destination AND user.pos
+    Call elevator_request WITH user1 AND elevator_Array
 
-    // when elevator reach the right floor, it will open the door
-    Call open_door
-
-    
+    // get the user in the right elevator and send it to his floor
+    Call move_elevator USING elevator_Array[elems] AND user1
 
 ENDSEQUENCE
 
 CLASS elevators
-    SET position to 0
-    SET direction to idle
-    SET available to TRUE
+    SET elevators.position to 0
+    SET elevators.direction to idle
+    SET elevators.available to TRUE
+    SET elevators.door_open to FALSE
 ENDCLASS
 
-CLASS user USING position AND destination
-    SET pos to position
-    SET destination to destination
+CLASS user
+    SET user.position to 0
+    SET user.destination to 0
+    SET user.inside to FALSE
 ENDCLASS
 
 
-SEQUENCE elevator_request USING user.destination AND user.pos
-
-    // timed call for user
-    Call call_time
-
-    // get the user direction
-    SET user_dir TO user.destination
-    // get user actual floor
-    SET user_pos TO user.pos
-
-    IF user_dir IS BIGGER THAN user_pos
-        RETURN user_dir is EQUAL TO down
-    ENDIF
-    IF user_dir IS SMALLER THAN user_pos
-        RETURN user_dir is EQUAL TO up
-    ENDIF
-
-    // look for the right elevator
-    Call available
-
+SEQUENCE mesure_logic USING elevator_Array
+    OBTAIN time WITH actual date and time
+    // get the calls and the hours they were sent
 ENDSEQUENCE
 
-// get available elevators
-SEQUENCE available
+SEQUENCE elevator_request USING user1 AND elevator_Array
+    // get the cosest elevator
+    SET closest_elevator to null
+    SET old_diff to null
 
-    // get usable elevator
-    Call routine
-
-
-    // get elevators position
-
-    // if moving up .. available for upper floors
-    // if moving down .. available for lower floors
-
-    // send the right elevator
-    Call prioritize USING available_elevator
-    Call open_door
-
-ENDSEQUENCE
-
-// see wich elevator to use using the request calls
-SEQUENCE prioritize USING available_elevator AND user_dir
-    // when calling a moving elevator wich one is to be prioritized
-
-    SET elevator_diff TO 0
-    SET best_el TO a list []
-    SET old_el TO 0
-    // verify each elevator
-    FOR EACH elems IN available_elevator
-
-        SET new_el TO elems 
-        // get the new elevator to a new var to compare
-
-        // get the position and the movement status of the elevator
-        READ new_el.pos AND new_el.direction
-        // verify
-        IF new_el.direction IS NOT EQUAL TO user_dir OR new_el.movement IS NOT EQUAL TO "idle"
-            SET new_el.status to "busy"
+    // see both elevators
+    FOR EACH elems IN elevator_Array
+        IF user1.position IS BIGGER THAN elems.position
+            SET new_difference to user1.position - elems.position
+        ENDIF
+        IF user1.position IS SMALLER THAN elems.position
+            SET new_difference to elems.position - user1.position
         ENDIF
 
-        ELSE
-            SET new_el.status to "available"
-
-            IF new_el.movement IS EQUAL TO "idle"
-                // find the difference of the elevator from the user
-                // keep the old position difference in a var
-                SET old_postion TO position_from_user
-                SET position_from_user TO COMPUTE user.pos - new_el.pos
-            ENDIF
-
-            IF user_dir IS EQUAL to "up" AND new_el.pos IS SMALLER THAN user_pos
-                SET old_postion TO position_from_user
-                SET position_from_user TO COMPUTE user_pos - new_el.pos
-            ENDIF
-
-            IF user_dir IS EQUAL to "down" AND new_el.pos IS BIGGER THAN user_pos
-                SET old_postion TO position_from_user
-                SET position_from_user TO COMPUTE new_el.pos - user_pos
-            ENDIF
-
-            IF old_postion < position_from_user
-                SET best_el IS EQUAL TO elems
-            ENDIF
-        ENDELSE
-
-        
-    ENDFOR EACH
-    // now I have the best elevator for the user in (best_el)
-    
-    // on multiple calls sort the requests of the inquiries ex 20-21-25-30 and go the opposite way after, 28, 25, 17, 5
-    // the elevator is prioritize on movement first and second is the closest 
-    // send the right elevator
-ENDSEQUENCE
-
-// to check if the elevator is on service and safe to use + bring on back to ground floor
-SEQUENCE routine
-
-    SET available_elevator TO a list
-
-    // routinely check the elevator before use
-    FOR EACH elevator FROM the elevators CLASS
-        IF elevator.available IS EQUAL TO TRUE
-            PUSH elevator.position TO available_elevator list
+        IF new_difference  IS SMALLER THAN old_diff
+            // find the closest and set it to a variable
+            SET closest_elevator TO elems
         ENDIF
-        ELSE
-            PUSH null TO available_elevator list
-        ENDELSE
+
+        SET old_diff to new_difference //stock the variable to compare it
     ENDFOR EACH
 
-    // when elevator is idle and not on a specific date and time bring back to ground floor and check status
+    // get the elevator to the user
+    IF user1.position IS SMALLER THAN closest_elevator.position
+        WHILE user1.position IS SMALLER THAN closest_elevator.position
+            DECREMENT closest_elevator.position by one
+        ENDWHILE
+    ENDIF
+    IF user1.position IS BIGGER THAN closest_elevator.position
+        WHILE user1.position IS BIGGER THAN closest_elevator.position
+            INCREMENT closest_elevator.position by one
+        ENDWHILE
+    ENDIF
+    // open and close elevator doors
+    IF user1.position IS EQUAL TO closest_elevator.position AND user1.inside IS FALSE
+        SET closest_elevator.open_door IS EQUAL TO TRUE
+        SET user1.inside TO TRUE
+        SET closest_elevator.open_door TO FALSE
+        SET elevator_Array[elems] TO closest_elevator // give it all the properties
+        SET closest_elevator TO null // reset the variable
+    ENDIF
 
-    RETURN available_elevator list
+    RETURN elevator_Array[elems]
+
 ENDSEQUENCE
 
-// to control the opening and closing of the doors
-SEQUENCE open_door 
-    // if its on the right floor ... open the elevator door
+SEQUENCE move_elevator USING elevator_Array[elems] AND user1
+    WHILE user1.inside IS TRUE
+        IF user1.position IS SMALLER THAN user1.destination
+            SET elevator_Array[elems].available TO "up"
+                INCREMENT elevator_Array[elems].position by one
+            SET user1.position TO elevator_Array[elems].position
+        ENDIF
+        IF user1.position IS BIGGER THAN user1.destination
+            SET elevator_Array[elems].available TO "down"
+                DECREMENT elevator_Array[elems].position by one
+            SET user1.position TO elevator_Array[elems].position
+        ENDIF
+        ELSE IF user1.position IS EQUAL TO user1.destination
+            SET elevator_Array[elems].available to "idle"
+            SET elevator_Array[elems].open_door to TRUE
+            SET user1.inside TO FALSE
+        ENDELSE IF
+    ENDWHILE
+
+    IF user1.inside IS FALSE
+        SET elevator_Array[elems].door_open to FALSE
+    ENDIF
     
-    // while door is open
-        // get the elevator weight
-        CALL full_capacity
-        // start timer
-
-    // if button to open door is pressed ... open door
-    // if object is keeping elevator from closing ... open door
-    // if object is detected ... open door
-
-    // if timer reached more than 25 seconds ... start an alarm and request other elevators on calls instead
-    // else if timer is bigger than 15 secondes ... close door ... stop timer ... reset timer
-    // send elevator to next request or idle
 ENDSEQUENCE
 
-// temporal logic of the elevators
-SEQUENCE mesure_logic
-    // get the date and timer
-    // put the elevator the spots likely to be used depending of the time
-ENDSEQUENCE
 
-// inspect calls time
-SEQUENCE call_time 
-    // mesure the time each calls take and adapt it for each user to arrive in a timely manner
-ENDSEQUENCE
-
-// full elevator detection
-SEQUENCE full_capacity
-    // get the total weight
-    // when full cap is reached .. bring up the elevators up while requesting another elevator
-ENDSEQUENCE
-
-SEQUENCE user_destination
-    // get the user direction
-    // send the elevator to the right direction
-    // open the door
-ENDSEQUENCE
