@@ -132,5 +132,3 @@ SEQUENCE move_elevator USING elems AND user1
     ENDIF
     
 ENDSEQUENCE
-
-
