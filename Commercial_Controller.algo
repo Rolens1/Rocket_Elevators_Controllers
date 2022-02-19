@@ -2,7 +2,7 @@ Call start
 
 SEQUENCE start
 
-    CALL battery WITH 4 AND 66 AND 6
+    CALL battery WITH 4 AND 66 AND 6 AND 3
 
     // for user request on specific column id
     Call user with 1 AND 18
@@ -38,7 +38,7 @@ DEFINE user USING position AND destination
     SET inside to FALSE
 ENDDEFINE
 
-DEFINE battery USING num_of_column AND num_of_floors AND num_of_basement
+DEFINE battery USING num_of_column AND num_of_floors AND num_of_basement AND num_of_elevators
     SET num_of_column TO num_of_column
     SET num_of_floors TO num_of_floors
     SET num_of_basement TO num_of_basement
@@ -50,12 +50,12 @@ DEFINE battery USING num_of_column AND num_of_floors AND num_of_basement
         SET X to 0 
         SET only_floors TO (COMPUTE num_of_floors MINUS num_of_basement)
         FOR x SMALLER OR EQUAL TO num_of_column
-            SET column to new column WITH (COMPUTE X AND 1) AND 3 AND num_of_floors AND num_of_basement    
+            SET column to new column WITH (COMPUTE X PLUS 1) AND 3 AND num_of_floors AND num_of_basement AND num_of_elevators 
             IF X SMALLER THAN 1
                 SET column coverage of column id 1 TO (COMPUTE 0 MINUS num_of_basement) TO 1
             ENDFOR
             IF X BIGGER THAN 0
-                SET column coverage TO (1 AND TO (COMPUTE (20 MULTIPLIED BY (X-1)) PLUS 1) TO (COMPUTE (20 MULTIPLIED by X)))    // (20 * x)
+                SET column coverage TO (1 AND TO (COMPUTE (20 MULTIPLIED BY (X-1)) PLUS 1) TO (COMPUTE (20 MULTIPLIED by X)))
             ENDFOR
             INCREMENT X
         ENDFOR
@@ -64,19 +64,19 @@ DEFINE battery USING num_of_column AND num_of_floors AND num_of_basement
 ENDDEFINE
 
 
-DEFINE column USING _id AND num_of_column AND num_of_floors AND num_of_basement
+DEFINE column USING _id AND num_of_column AND num_of_floors AND num_of_basement AND num_of_elevator
     SET id to _id
     SET num_of_elevator to num_of_elevator
     SET num_of_floors to num_of_floors
     SET coverage to an empty array
 
-    CALL create_elevators WITH num_of_elevator
+    CALL create_elevators WITH num_of_elevators
 
-    SEQUENCE create_elevators USING num_of_elevator AND num_of_floors
+    SEQUENCE create_elevators USING num_of_elevator
         SET elevator_id to 0
         FOR num_of_elevator
             // set each elevator with an id and default position to lobby
-            SET elevator id to NEW elevators WITH (column_id followed by elevator_id) AND 1
+            SET elevator id to NEW elevators WITH elevator_id AND 1
             // ex. column_id = 3 and 3 elevator => 31 -32 -33 => first number to represent column number and 2nd to represent elevator number
             INCREMENT elevator_id
         ENDFOR

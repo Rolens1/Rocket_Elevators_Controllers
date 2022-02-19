@@ -3,7 +3,7 @@ CALL start
 
 SEQUENCE start
 
-    CALL column 1 AND 1 AND 10 AND 0
+    CALL column 1 AND 1 AND 10 AND 2
 
     // for user request on specific column id
     Call user with 1 AND 4
@@ -16,15 +16,15 @@ SEQUENCE start
     
 ENDSEQUENCE
 
-SEQUENCE elevator_Array USING column_id
-    SET id to column_id
+SEQUENCE elevator_Array USING column id
+    SET id to column id
     SET num_of_elevator to num_of_elevator of column
     SET array to an empty array
 
     SET x to 1
 
     FOR x smaller than OR EQUAL TO num_of_elevator
-        PUSH elevator id IN array
+        PUSH x IN array
         INCREMENT x
     ENDFOR
 
@@ -39,20 +39,19 @@ DEFINE user USING position AND destination
     SET inside to FALSE
 ENDDEFINE
 
-DEFINE column USING _id AND num_of_column AND num_of_floors AND num_of_basement
+DEFINE column USING _id AND num_of_column AND num_of_floors AND num_of_elevators
     SET id to _id
-    SET num_of_elevator to num_of_elevator
+    SET num_of_elevator to num_of_elevators
     SET num_of_floors to num_of_floors
     SET coverage to an empty array
 
     CALL create_elevators WITH num_of_elevator
 
-    SEQUENCE create_elevators USING num_of_elevator AND num_of_floors
-        SET elevator_id to 0
+    SEQUENCE create_elevators USING num_of_elevator
+        SET elevator_id to 1
         FOR num_of_elevator
             // set each elevator with an id and default position to lobby
-            SET elevator id to NEW elevators WITH (column_id followed by elevator_id) AND 1
-            // ex. column_id = 3 and 3 elevator => 31 -32 -33 => first number to represent column number and 2nd to represent elevator number
+            SET elevator to NEW elevators WITH elevator_id AND 1
             INCREMENT elevator_id
         ENDFOR
     ENDSEQUENCE
@@ -186,25 +185,27 @@ SEQUENCE remove_from_array USING array AND user
         ENDIF
     ENDFOR
 
-    return array
+    RETURN array
 ENDSEQUENCE
 
 SEQUENCE open_door USING elevator and user
+
+
     IF elevator position is EQUAL to user position
         SET elevator door open_status to TRUE
     ENDIF
 
     // detect if something is in front of the door
     IF elevator door detector IS TRUE
-        SET elevator door open_status to TRUE
-        FALSE
+        SET elevator open_status TO TRUE
     ENDIF
     
     IF elevator status IS EQUAL TO "idle" AND user position IS EQUAL to user destination
-        Call close_door with elevator
+        SET elevator open_status TO TRUE
     ENDIF
 
     WHILE elevator door open_status IS TRUE
+        WAIT 1000ms
         Call close_door WITH elevator
     ENDWHILE  
 ENDSEQUENCE
