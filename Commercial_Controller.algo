@@ -1,25 +1,16 @@
 Call start
 
 SEQUENCE start
-    SET num_of_column TO 4
-    SET column_id to 1
 
-    FOR num_of_column
-        Call column with column_id AND 3 AND 66
-        INCREMENT column_id
-    ENDFOR
-
-    SET coverage of column with id 1 TO an array WITH 1 AND B1 TO B6
-    SET coverage of column with id 2 TO an array WITH 1 TO 20
-    SET coverage of column with id 3 TO an array WITH 1 AND 21 TO 40
-    SET coverage of column with id 4 TO an array WITH 1 AND 41 TO 60
+    CALL battery WITH 4 AND 66 AND 6
 
     // for user request on specific column id
-    Call user1 with 2 AND 1 AND 18
+    Call user with 1 AND 18
+    CALL column_search WITH user AND column
 
-    Call elevator_Array WITH 2 RETURNING el_array
+    Call elevator_Array WITH column id RETURNING el_array
 
-    Call elevator_request WITH user1 and el_array RETURNING sent_elevator
+    Call elevator_request WITH user AND el_array RETURNING sent_elevator
     Call move_elevator WITH sent_elevator
     
 ENDSEQUENCE
@@ -31,8 +22,8 @@ SEQUENCE elevator_Array USING column_id
 
     SET x to 1
 
-    FOR x smaller than num_of_elevator
-        PUSH elevator with (id of column followed by x) into array
+    FOR x smaller than OR EQUAL TO num_of_elevator
+        PUSH elevator id IN array
         INCREMENT x
     ENDFOR
 
@@ -41,15 +32,39 @@ SEQUENCE elevator_Array USING column_id
     return el_array
 ENDSEQUENCE
 
-DEFINE user USING column_called AND position AND destination
-    SET column to column_called
+DEFINE user USING position AND destination
     SET position to position
     SET destination to destination
     SET inside to FALSE
 ENDDEFINE
 
+DEFINE battery USING num_of_column AND num_of_floors AND num_of_basement
+    SET num_of_column TO num_of_column
+    SET num_of_floors TO num_of_floors
+    SET num_of_basement TO num_of_basement
 
-DEFINE column USING _id AND num_of_elevator AND num_of_floors
+
+    Call create_column WITH num_of_column AND num_of_floors AND num_of_basement
+
+    SEQUENCE create_column USING num_of_column AND num_of_floors AND num_of_basement
+        SET X to 0 
+        SET only_floors TO (COMPUTE num_of_floors MINUS num_of_basement)
+        FOR x SMALLER OR EQUAL TO num_of_column
+            SET column to new column WITH (COMPUTE X AND 1) AND 3 AND num_of_floors AND num_of_basement    
+            IF X SMALLER THAN 1
+                SET column coverage of column id 1 TO (COMPUTE 0 MINUS num_of_basement) TO 1
+            ENDFOR
+            IF X BIGGER THAN 0
+                SET column coverage TO (1 AND TO (COMPUTE (20 MULTIPLIED BY (X-1)) PLUS 1) TO (COMPUTE (20 MULTIPLIED by X)))    // (20 * x)
+            ENDFOR
+            INCREMENT X
+        ENDFOR
+    ENDSEQUENCE
+
+ENDDEFINE
+
+
+DEFINE column USING _id AND num_of_column AND num_of_floors AND num_of_basement
     SET id to _id
     SET num_of_elevator to num_of_elevator
     SET num_of_floors to num_of_floors
@@ -57,10 +72,11 @@ DEFINE column USING _id AND num_of_elevator AND num_of_floors
 
     CALL create_elevators WITH num_of_elevator
 
-    SEQUENCE create_elevators USING num_of_elevator
+    SEQUENCE create_elevators USING num_of_elevator AND num_of_floors
         SET elevator_id to 0
         FOR num_of_elevator
-            SET elevator to (column_id followed by elevator_id) AND 1
+            // set each elevator with an id and default position to lobby
+            SET elevator id to NEW elevators WITH (column_id followed by elevator_id) AND 1
             // ex. column_id = 3 and 3 elevator => 31 -32 -33 => first number to represent column number and 2nd to represent elevator number
             INCREMENT elevator_id
         ENDFOR
@@ -68,11 +84,20 @@ DEFINE column USING _id AND num_of_elevator AND num_of_floors
 ENDDEFINE
 
 DEFINE elevators USING elevator_id AND elevator_position
+    SET id to elevator_id
     SET position to elevator_position
     SET direction to "idle"
     SET available to TRUE
     SET door_open to FALSE
     SET floor_display to elevator_position
+    SET max_capacity TO FALSE
+
+        Call elevator_door
+ENDDEFINE
+
+DEFINE elevator_door
+    SET open_status to FALSE
+    SET detector to FALSE
 ENDDEFINE
 
 SEQUENCE elevator_request USING user AND array
@@ -80,15 +105,15 @@ SEQUENCE elevator_request USING user AND array
     SET closest_elevator to null
     SET old_diff to null
 
-    Call remove_from_array WITH array and user1
+    Call remove_from_array WITH array and user
 
     // see both elevators
     FOR array
-        IF position of user1 IS BIGGER THAN position of elems in array
+        IF position of user IS BIGGER THAN position of elems in array
             SET new_difference to position of user - position of elems in array
         ENDIF
-        IF position of user1 IS SMALLER THAN position of elems in array
-            SET new_difference to position of elems in array - position of user1
+        IF position of user IS SMALLER THAN position of elems in array
+            SET new_difference to position of elems in array - position of user
         ENDIF
 
         IF new_difference  IS SMALLER THAN old_diff
@@ -100,21 +125,22 @@ SEQUENCE elevator_request USING user AND array
     ENDFOR EACH
 
     // get the elevator to the user
-    IF position of user1 IS SMALLER THAN position of closest_elevator
+    IF position of user IS SMALLER THAN position of closest_elevator
         WHILE position of user IS SMALLER THAN position of closest_elevator
             DECREMENT position of closest_elevator
+            SET closest_elevator floor_display to closest_elevator position
         ENDWHILE
     ENDIF
     IF position of user IS BIGGER THAN position of closest_elevator
         WHILE position of user IS BIGGER THAN position of closest_elevator
             INCREMENT position of closest_elevator
+            SET closest_elevator floor_display to closest_elevator position
         ENDWHILE
     ENDIF
     // open and close elevator doors
     IF position of user IS EQUAL TO position of closest_elevator AND inside of user IS FALSE
-        SET open_door of closest_elevator IS EQUAL TO TRUE
-        SET inside of user TO TRUE
-        SET open_door of closest_elevator TO FALSE
+        SET closest_elevator floor_display to closest_elevator position
+        Call open_door WITH user
         SET sent_elevator TO closest_elevator // give it all the properties
         SET closest_elevator TO null // reset the variable
     ENDIF
@@ -123,11 +149,11 @@ SEQUENCE elevator_request USING user AND array
 
 ENDSEQUENCE
 
-SEQUENCE move_elevator USING sent_elevator AND user1
+SEQUENCE move_elevator USING sent_elevator AND user
     WHILE indside of user IS TRUE
-        IF position of user IS SMALLER THAN destination of user1
+        IF position of user IS SMALLER THAN destination of user
             SET available of sent_elevator TO "up"
-            INCREMENT position of elems
+            INCREMENT position of sent_elevator
             SET position of user TO positon of sent_elevator
         ENDIF
         IF position of user IS BIGGER THAN destination of user
@@ -135,15 +161,17 @@ SEQUENCE move_elevator USING sent_elevator AND user1
             DECREMENT sent_elevator position
             SET user position TO sent_elevator position
         ENDIF
-        ELSE IF user1 position IS EQUAL TO user destination
+        ELSE IF user position IS EQUAL TO user destination
             SET sent_elevator available to "idle"
-            SET sent_elevator open_door to TRUE
+            Call open_door with sent_elevator
             SET user inside TO FALSE
         ENDELSE IF
+
+        SET sent_elevator floor_display to closest_elevator position
     ENDWHILE
 
-    IF user1 inside IS FALSE
-        SET sent_elevator door_open to FALSE
+    IF user inside IS FALSE
+        Call open_door with sent_elevator
     ENDIF
     
 ENDSEQUENCE
@@ -153,8 +181,6 @@ SEQUENCE remove_from_array USING array AND user
 
     IF user position IS smaller than user destination
         Set user_direction to "up"
-
-        IF 
     ENDIF
     IF user position IS bigger than user destination
         Set user_direction to "down"
@@ -178,7 +204,50 @@ SEQUENCE remove_from_array USING array AND user
                 REMOVE elems in array from array
             ENDELSE IF
         ENDIF
+
+        // if elevetor is out of service dont use it
+        IF available for elems in array is FALSE OR max_capacity is TRUE
+            REMOVE elems in array from array
+        ENDIF
     ENDFOR
 
     return array
+ENDSEQUENCE
+
+SEQUENCE open_door USING elevator and user
+    IF elevator position is EQUAL to user position
+        SET elevator door open_status to TRUE
+    ENDIF
+
+    // detect if something is in front of the door
+    IF elevator door detector IS TRUE
+        SET elevator door open_status to TRUE
+        FALSE
+    ENDIF
+    
+    IF elevator status IS EQUAL TO "idle" AND user position IS EQUAL to user destination
+        Call close_door with elevator
+    ENDIF
+
+    WHILE elevator door open_status IS TRUE
+        Call close_door WITH elevator
+    ENDWHILE  
+ENDSEQUENCE
+
+SEQUENCE close_door USING elevator
+    IF elevator door detector is FALSE
+        SET elevator door open_status to FALSE
+    ENDIF
+
+    ELSE
+        Call open_door WITH elevator
+    ENDELSE
+ENDSEQUENCE
+
+SEQUENCE column_search USING user and column
+    FOR column
+        IF user destination IN column coverage
+            RETURN column id
+        ENDIF
+    ENDFOR
 ENDSEQUENCE
